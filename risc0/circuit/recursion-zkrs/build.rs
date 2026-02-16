@@ -70,10 +70,18 @@ fn build_zkr_table() {
                 .to_str()
                 .unwrap()
                 .to_string();
+
+            if !str_name
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '.' || c == '_' || c == '-')
+            {
+                panic!("Invalid character in ZKR filename: {str_name}");
+            }
+
             let size = entry.size();
             writeln!(
                 &mut output,
-                "\"{str_name}\" => (include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{str_name}.xz\")), {size}),"
+                "{str_name:?} => (include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{str_name}.xz\")), {size}),"
             )
             .unwrap();
 

@@ -79,13 +79,13 @@ mod zkvm {
     }
 
     fn assert_user_ptr<T>(ptr: *const T) {
-        if ptr as usize >= USER_END_ADDR {
-            illegal_instruction();
-        }
+        assert_user_raw_slice(ptr as *const u8, core::mem::size_of::<T>() as u32);
     }
 
     fn assert_user_raw_slice(ptr: *const u8, nbytes: u32) {
-        if nbytes > 0 && (ptr as usize).saturating_add(nbytes as usize) > USER_END_ADDR {
+        let start = ptr as usize;
+        let end = start.saturating_add(nbytes as usize);
+        if start < USER_START_ADDR || end > USER_END_ADDR {
             illegal_instruction()
         }
     }
@@ -281,6 +281,11 @@ mod zkvm {
         block2_ptr: *const u32,
         count: u32,
     ) {
+        assert_user_ptr(out_state);
+        assert_user_ptr(in_state);
+        assert_user_raw_slice(block1_ptr as *const u8, count * BLOCK_WORDS as u32 * 4);
+        assert_user_raw_slice(block2_ptr as *const u8, count * BLOCK_WORDS as u32 * 4);
+
         let rv32im_version = RV32IM_VERSION_ADDR as *mut u32;
         if unsafe { rv32im_version.read_volatile() } == 3 {
             sha_software(out_state, in_state, block1_ptr, block2_ptr, count);
@@ -485,6 +490,8 @@ mod zkvm {
         // a3: arg_index
         // a4: get_var_len
 
+        assert_user_raw_slice(buf, nwords * WORD_SIZE);
+
         let old_a4 = get_ureg(REG_A4);
         set_ureg(REG_A4, 0);
 
@@ -536,6 +543,8 @@ mod zkvm {
         // a4: varname_len
         // a5: get_var_len
 
+        assert_user_raw_slice(buf, nwords * WORD_SIZE);
+
         let old_a5 = get_ureg(REG_A5);
         set_ureg(REG_A5, 0);
 
@@ -560,6 +569,8 @@ mod zkvm {
         // a5: reserved/control_root
         // a6: check_is_full
         //
+        assert_user_raw_slice(buf, nwords * WORD_SIZE);
+
         let old_a6 = get_ureg(REG_A6);
         set_ureg(REG_A6, 0);
 
@@ -599,6 +610,8 @@ mod zkvm {
         // a0: from_host -> ret
         // a1: from_host_words
         // a2: syscall_name
+
+        assert_user_raw_slice(buf, nwords * WORD_SIZE);
 
         // Truncate the requested size since:
         // 1. The rv32im circuit can only transfer a max of 1KB.
@@ -663,6 +676,8 @@ mod zkvm {
         // a0: from_host
         // a1: from_host_words
         // a2: syscall_name
+
+        assert_user_raw_slice(buf, nwords * WORD_SIZE);
 
         // Truncate the requested size since:
         // 1. The rv32im circuit can only transfer a max of 1KB.

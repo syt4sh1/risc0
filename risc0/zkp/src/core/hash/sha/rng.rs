@@ -90,7 +90,11 @@ impl<F: Field> Rng<F> for ShaRng {
     }
 
     fn random_bits(&mut self, bits: usize) -> u32 {
-        ((1 << bits) - 1) & self.next_u32()
+        if bits >= 32 {
+            self.next_u32()
+        } else {
+            ((1 << bits) - 1) & self.next_u32()
+        }
     }
 
     fn random_elem(&mut self) -> F::Elem {

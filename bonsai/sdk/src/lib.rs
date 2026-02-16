@@ -873,7 +873,8 @@ bonsai_sdk::non_blocking::Client::from_env(risc0_zkvm::VERSION)
         /// Useful to download a [SessionId] receipt_url
         #[maybe_async_attr]
         pub async fn download(&self, url: &str) -> Result<Vec<u8>, SdkErr> {
-            let data = self.client.get(url).send().await?.bytes().await?;
+            let client = HttpClient::builder().build()?;
+            let data = client.get(url).send().await?.bytes().await?;
 
             Ok(data.into())
         }

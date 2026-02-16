@@ -83,6 +83,7 @@ impl<Risc0ContextT: Risc0Context> BigIntIO for BigIntIOImpl<'_, Risc0ContextT> {
         let mut limbs = SmallVec::<[u32; 12]>::with_capacity(word_count as usize);
         let mut addr = start_addr;
         while addr < start_addr + word_count {
+            check_bigint_addr(addr, self.mode)?;
             limbs.push(self.ctx.load_u32(LoadOp::Load, addr)?);
             addr.inc();
         }
@@ -129,6 +130,7 @@ impl<Risc0ContextT: Risc0Context> BigIntIO for BigIntIOImpl<'_, Risc0ContextT> {
                 new_chunk[s..(s + WORD_SIZE)].copy_from_slice(&word.to_le_bytes());
             }
             let addr = addr + c_i * BIGINT_WIDTH_WORDS;
+            check_bigint_addr(addr, self.mode)?;
             self.witness.insert(addr, new_chunk);
             filled_chunks += 1;
         }
@@ -136,6 +138,7 @@ impl<Risc0ContextT: Risc0Context> BigIntIO for BigIntIOImpl<'_, Risc0ContextT> {
         let padding = (count as usize / BIGINT_WIDTH_BYTES) - filled_chunks;
         for i in 0..padding {
             let addr = addr + (filled_chunks + i) * BIGINT_WIDTH_WORDS;
+            check_bigint_addr(addr, self.mode)?;
             self.witness.insert(addr, [0; BIGINT_WIDTH_BYTES]);
         }
 

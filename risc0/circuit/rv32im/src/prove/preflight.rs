@@ -154,9 +154,19 @@ impl SegmentContext {
     pub fn preflight(&self, po2: usize) -> Result<PreflightContext> {
         scope!("preflight");
 
-        let rows = 1usize << po2;
+        ensure!(
+            po2 <= risc0_zkp::MAX_CYCLES_PO2,
+            "po2 {po2} exceeds MAX_CYCLES_PO2"
+        );
+
+        let rows = 1usize
+            .checked_shl(po2 as u32)
+            .ok_or_else(|| anyhow!("po2 {po2} overflow"))?;
         let mut row_info = vec![RowInfo::zeroed(); rows];
-        let mut aux = vec![0u32; rows * MAX_WIT_PER_ROW];
+        let aux_size = rows
+            .checked_mul(MAX_WIT_PER_ROW)
+            .ok_or_else(|| anyhow!("aux size overflow"))?;
+        let mut aux = vec![0u32; aux_size];
         let mut trace = Trace::new(&mut row_info, &mut aux);
         trace.globals_mut().povwNonce = self.povw_nonce;
 

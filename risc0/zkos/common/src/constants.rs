@@ -17,4 +17,6 @@ pub const MEPC_PTR: *mut usize = 0xffff_0200 as *mut usize;
 
 pub const USER_REGS_PTR: *mut u32 = 0xffff_0080 as *mut u32;
 
+pub const USER_START_ADDR: usize = 0x0001_0000;
+pub const USER_END_ADDR: usize = 0xc000_0000;
 pub const KERNEL_START_ADDR: usize = 0xc000_0000;

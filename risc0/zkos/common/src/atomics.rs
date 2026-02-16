@@ -12,7 +12,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0 OR MIT
-use crate::{constants::KERNEL_START_ADDR, get_ureg, mret, set_ureg};
+use crate::{get_ureg, mret, set_ureg};
 
 static mut ILRSC: u32 = 0;
 static mut ILRSC_SET: u32 = 0;
@@ -54,8 +54,8 @@ macro_rules! atomic_op {
             panic!("Address misaligned: {:#010x}", addr);
         }
 
-        if addr >= KERNEL_START_ADDR as u32 {
-            panic!("Atomic operation on kernel memory: {:#010x}", addr);
+        if addr < crate::constants::USER_START_ADDR as u32 || addr >= crate::constants::USER_END_ADDR as u32 {
+            panic!("Atomic operation on non-user memory: {:#010x}", addr);
         }
 
         // Read current value from memory
@@ -88,8 +88,8 @@ macro_rules! validate_and_read {
             panic!("Address misaligned: {:#010x}", addr);
         }
 
-        if addr >= KERNEL_START_ADDR as u32 {
-            panic!("Atomic operation on kernel memory: {:#010x}", addr);
+        if addr < crate::constants::USER_START_ADDR as u32 || addr >= crate::constants::USER_END_ADDR as u32 {
+            panic!("Atomic operation on non-user memory: {:#010x}", addr);
         }
 
         // Read value from memory

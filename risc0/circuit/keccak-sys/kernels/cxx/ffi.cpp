@@ -61,14 +61,26 @@ void extern_log(ExecContext& ctx, const std::string& message, std::vector<Val> v
 }
 
 Val extern_getPreimage(ExecContext& ctx, Val idx) {
+  if (ctx.cycle >= ctx.preflight.numCycles) {
+    throw std::runtime_error("extern_getPreimage: cycle out of bounds");
+  }
   uint32_t idxLow = idx.asUInt32() % 4;
   uint32_t idxHigh = idx.asUInt32() / 4;
+  if (idxHigh >= 25) {
+    throw std::runtime_error("extern_getPreimage: index out of bounds");
+  }
   uint32_t preimageIdx = ctx.preflight.curPreimage[ctx.cycle];
+  if (preimageIdx >= ctx.preflight.preimagesSize) {
+    throw std::runtime_error("extern_getPreimage: preimageIdx out of bounds");
+  }
   const KeccakState& preimages = ctx.preflight.preimages[preimageIdx];
   return (preimages[idxHigh] >> (16 * idxLow)) & 0xffff;
 }
 
 Val extern_nextPreimage(ExecContext& ctx) {
+  if (ctx.cycle >= ctx.preflight.numCycles) {
+    throw std::runtime_error("extern_nextPreimage: cycle out of bounds");
+  }
   return ctx.preflight.curPreimage[ctx.cycle] != ctx.preflight.preimagesSize;
 }
 

@@ -71,7 +71,11 @@ impl Rng<BabyBear> for Poseidon2Rng {
                 val = new_val;
             }
         }
-        ((1 << bits) - 1) & val
+        if bits >= 32 {
+            val
+        } else {
+            ((1 << bits) - 1) & val
+        }
     }
 
     fn random_elem(&mut self) -> Elem {

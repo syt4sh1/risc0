@@ -13,6 +13,7 @@
 // limitations under the License.
 
 .equ USER_START_ADDR, 0x00010000
+.equ USER_END_ADDR, 0xc0000000
 .equ STACK_TOP, 0xfff00000
 .equ USER_REGS_ADDR, 0xffff0080
 .equ MEPC_ADDR, 0xffff0200
@@ -115,6 +116,9 @@ _ecall_dispatch:
 _ecall_halt:
     # copy output digest from pointer in a1 to GLOBAL_OUTPUT_ADDR
     lw t0, REG_A1 * WORD_SIZE (tp) # out_state
+    # Ensure the entire 32-byte (8-word) range is in user memory
+    li t1, USER_END_ADDR - 28
+    bgeu t0, t1, 1f
     li t1, GLOBAL_OUTPUT_ADDR
     lw t2, 0(t0)
     sw t2, 0(t1)

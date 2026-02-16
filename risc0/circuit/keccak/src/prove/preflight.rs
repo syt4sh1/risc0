@@ -200,7 +200,7 @@ impl<Order: PreflightCycleOrder> PreflightTrace<Order> {
         let mut pflat = ret.write_pflat(&cells);
 
         // Do an initial 'init' cycle
-        ret.add_cycle(Control::Init, 0, 0, pflat, cur_idx);
+        ret.add_cycle(Control::Init, 0, 0, pflat, cur_idx, cycles);
 
         for kstate in inputs.iter() {
             let mut kstate = *kstate;
@@ -208,51 +208,97 @@ impl<Order: PreflightCycleOrder> PreflightTrace<Order> {
 
             // Do 'read' cycle
             let kflat = ret.write_kflat(&mut data, &kstate);
-            ret.add_cycle(Control::Read, 0, kflat, pflat, cur_idx);
+            ret.add_cycle(Control::Read, 0, kflat, pflat, cur_idx, cycles);
             cur_idx += 1;
 
             // Do Poseidon2 hashing
-            ret.write_poseidon(&mut cells, &data, kflat, &mut pflat, cur_idx, true);
+            ret.write_poseidon(&mut cells, &data, kflat, &mut pflat, cur_idx, true, cycles);
 
             // Expand
             let bits = ret.write_keccak(&kstate, false);
-            ret.add_cycle(Control::Expand(0), bits, kflat, pflat, cur_idx);
+            ret.add_cycle(Control::Expand(0), bits, kflat, pflat, cur_idx, cycles);
             let bits = ret.write_keccak(&kstate, true);
-            ret.add_cycle(Control::Expand(1), bits, kflat, pflat, cur_idx);
+            ret.add_cycle(Control::Expand(1), bits, kflat, pflat, cur_idx, cycles);
 
             // Now do the Keccack cycles
             for round in 0..24 {
                 let theta = theta_p1(&kstate);
                 let bits = ret.write_theta(&theta);
-                ret.add_cycle(Control::Keccak0(round as u8), bits, kflat, pflat, cur_idx);
+                ret.add_cycle(
+                    Control::Keccak0(round as u8),
+                    bits,
+                    kflat,
+                    pflat,
+                    cur_idx,
+                    cycles,
+                );
                 theta_p2_rho_pi(&mut kstate, &theta);
                 let bits = ret.write_keccak(&kstate, false);
-                ret.add_cycle(Control::Keccak1(round as u8), bits, kflat, pflat, cur_idx);
+                ret.add_cycle(
+                    Control::Keccak1(round as u8),
+                    bits,
+                    kflat,
+                    pflat,
+                    cur_idx,
+                    cycles,
+                );
                 let bits = ret.write_keccak(&kstate, true);
-                ret.add_cycle(Control::Keccak2(round as u8), bits, kflat, pflat, cur_idx);
+                ret.add_cycle(
+                    Control::Keccak2(round as u8),
+                    bits,
+                    kflat,
+                    pflat,
+                    cur_idx,
+                    cycles,
+                );
                 chi_iota(&mut kstate, round);
                 let bits = ret.write_keccak(&kstate, false);
-                ret.add_cycle(Control::Keccak3(round as u8), bits, kflat, pflat, cur_idx);
+                ret.add_cycle(
+                    Control::Keccak3(round as u8),
+                    bits,
+                    kflat,
+                    pflat,
+                    cur_idx,
+                    cycles,
+                );
                 let bits = ret.write_keccak(&kstate, true);
-                ret.add_cycle(Control::Keccak4(round as u8), bits, kflat, pflat, cur_idx);
+                ret.add_cycle(
+                    Control::Keccak4(round as u8),
+                    bits,
+                    kflat,
+                    pflat,
+                    cur_idx,
+                    cycles,
+                );
             }
 
             // Do 'write' cycle
             let kflat = ret.write_kflat(&mut data, &kstate);
-            ret.add_cycle(Control::Write, 0, kflat, pflat, cur_idx);
+            ret.add_cycle(Control::Write, 0, kflat, pflat, cur_idx, cycles);
 
             // Sha and write all for blocks
-            ret.write_poseidon(&mut cells, &data, kflat, &mut pflat, cur_idx, false);
+            ret.write_poseidon(&mut cells, &data, kflat, &mut pflat, cur_idx, false, cycles);
         }
 
         while ret.cycle < cycles {
-            ret.add_cycle(Control::Shutdown, 0, 0, pflat, cur_idx);
+            ret.add_cycle(Control::Shutdown, 0, 0, pflat, cur_idx, cycles);
         }
 
         ret
     }
 
-    fn add_cycle(&mut self, ctrl: Control, bits: u32, kflat: u32, pflat: u32, preimage_idx: u32) {
+    fn add_cycle(
+        &mut self,
+        ctrl: Control,
+        bits: u32,
+        kflat: u32,
+        pflat: u32,
+        preimage_idx: u32,
+        max_cycles: usize,
+    ) {
+        if self.cycle >= max_cycles {
+            panic!("PreflightTrace::add_cycle: cycle {self.cycle} exceeds max_cycles {max_cycles}");
+        }
         let offset = self.data.len() as u32;
         let cycle = self.cycle as u32;
         let ctrl_state = ctrl.as_state();
@@ -317,6 +363,7 @@ impl<Order: PreflightCycleOrder> PreflightTrace<Order> {
         pflat: &mut u32,
         cur_idx: u32,
         is_in: bool,
+        max_cycles: usize,
     ) {
         for round in 0..7 {
             for i in 0..8 {
@@ -331,7 +378,7 @@ impl<Order: PreflightCycleOrder> PreflightTrace<Order> {
             } else {
                 Control::PoseidonOut(round as u8)
             };
-            self.add_cycle(ctrl, 0, kflat, *pflat, cur_idx);
+            self.add_cycle(ctrl, 0, kflat, *pflat, cur_idx, max_cycles);
         }
     }
 

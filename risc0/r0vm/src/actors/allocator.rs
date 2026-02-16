@@ -2220,7 +2220,8 @@ async fn proxy_api_request(
         .uri
         .path()
         .strip_prefix(PROXY_URL_PATH)
-        .ok_or_else(|| anyhow::anyhow!("url {} doesn't begin with {PROXY_URL_PATH}", parts.uri))?;
+        .ok_or_else(|| anyhow::anyhow!("url {} doesn't begin with {PROXY_URL_PATH}", parts.uri))?
+        .trim_start_matches('/');
 
     // Join the URLs together
     let joined_uri = endpoint.join(request_path).context("failed to join URLs")?;

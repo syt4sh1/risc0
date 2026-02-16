@@ -103,8 +103,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let Some(api_key_header) = parts.headers.get("x-api-key") else {
-            return Ok(ExtractApiKey(USER_ID.to_string()));
-            // return Err((StatusCode::UNAUTHORIZED, "Missing x-api-key header"));
+            return Err((StatusCode::UNAUTHORIZED, "Missing x-api-key header"));
         };
 
         let api_key_str = match api_key_header.to_str() {
@@ -114,6 +113,15 @@ where
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, ""));
             }
         };
+
+        let expected_key = std::env::var("RISC0_API_KEY").map_err(|_| {
+            tracing::error!("RISC0_API_KEY not set");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Server configuration error")
+        })?;
+
+        if api_key_str != expected_key {
+            return Err((StatusCode::UNAUTHORIZED, "Invalid x-api-key"));
+        }
 
         Ok(ExtractApiKey(api_key_str.to_string()))
     }

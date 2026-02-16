@@ -120,14 +120,30 @@ struct SegmentSyscallHandler<'a> {
 
 impl Syscall for SegmentSyscallHandler<'_> {
     fn host_read(&self, _ctx: &mut impl SyscallContext, _fd: u32, buf: &mut [u8]) -> Result<u32> {
-        let pos = self.read_pos.replace(self.read_pos.get() + 1);
+        let pos = self.read_pos.get();
+        if pos >= self.segment.read_record.len() {
+            anyhow::bail!("SegmentSyscallHandler: read_pos out of bounds");
+        }
         let read_record = &self.segment.read_record[pos];
+        if read_record.len() != buf.len() {
+            anyhow::bail!(
+                "SegmentSyscallHandler: read_record length mismatch: expected {}, got {}",
+                buf.len(),
+                read_record.len()
+            );
+        }
         buf.copy_from_slice(read_record);
+        self.read_pos.set(pos + 1);
         Ok(read_record.len() as u32)
     }
 
     fn host_write(&self, _ctx: &mut impl SyscallContext, _fd: u32, _buf: &[u8]) -> Result<u32> {
-        let pos = self.write_pos.replace(self.read_pos.get() + 1);
-        Ok(self.segment.write_record[pos])
+        let pos = self.write_pos.get();
+        if pos >= self.segment.write_record.len() {
+            anyhow::bail!("SegmentSyscallHandler: write_pos out of bounds");
+        }
+        let rlen = self.segment.write_record[pos];
+        self.write_pos.set(pos + 1);
+        Ok(rlen)
     }
 }

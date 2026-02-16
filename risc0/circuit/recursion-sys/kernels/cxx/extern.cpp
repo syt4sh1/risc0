@@ -37,7 +37,13 @@ void extern_readIOPHeader(void* ctx, size_t cycle, const char* extra, std::array
 std::array<Fp, 4>
 extern_readIOPBody(void* ctx, size_t cycle, const char* extra, std::array<Fp, 3> args) {
   PreflightTrace* trace = static_cast<MachineContext*>(ctx)->trace;
+  if (cycle >= trace->numCycles) {
+    throw std::runtime_error("extern_readIOPBody: cycle >= numCycles");
+  }
   uint32_t iopIdx = trace->cycles[cycle].iopIdx++;
+  if (iopIdx >= trace->numIops) {
+    throw std::runtime_error("extern_readIOPBody: iopIdx >= numIops");
+  }
   const FpExt& body = trace->iops[iopIdx];
   // printf("extern_readIOPBody(%lu, [%u, %u, %u]): [0x%08x, 0x%08x, 0x%08x, 0x%08x]\n",
   //        cycle,
@@ -62,6 +68,9 @@ extern_womRead(void* ctx, size_t cycle, const char* extra, std::array<Fp, 1> arg
   uint32_t addr = args[0].asUInt32();
   // printf("extern_womRead(%lu, %u)\n", cycle, addr);
   // return {0, 0, 0, 0};
+  if (addr >= trace->numWoms) {
+    throw std::runtime_error("extern_womRead: addr >= numWoms");
+  }
   FpExt& val = trace->wom[addr];
   // printf("extern_womRead(%lu, %u): (0x%08x, 0x%08x, 0x%08x, 0x%08x)\n",
   //        cycle,
@@ -93,8 +102,13 @@ void extern_plonkWrite_wom(void* ctx, size_t cycle, const char* extra, std::arra
   MachineContext* mctx = static_cast<MachineContext*>(ctx);
   uint32_t addr = args[0].asUInt32();
   FpExt value(args[1], args[2], args[3], args[4]);
+  if (cycle >= mctx->womIndex.size()) {
+    throw std::runtime_error("extern_plonkWrite_wom: cycle out of bounds");
+  }
   uint32_t idx = mctx->womIndex[cycle]++;
-  assert(idx < kMaxWomRowsPerCycle);
+  if (idx >= kMaxWomRowsPerCycle) {
+    throw std::runtime_error("extern_plonkWrite_wom: idx >= kMaxWomRowsPerCycle");
+  }
 
   // printf("extern_plonkWrite_wom(%lu, %u, %u [0x%08x, 0x%08x, 0x%08x, 0x%08x])\n",
   //        cycle,
@@ -105,7 +119,11 @@ void extern_plonkWrite_wom(void* ctx, size_t cycle, const char* extra, std::arra
   //        args[3].asUInt32(),
   //        args[4].asUInt32());
 
-  WomArgumentRow& row = mctx->womRows[cycle * kMaxWomRowsPerCycle + idx];
+  size_t row_idx = cycle * kMaxWomRowsPerCycle + idx;
+  if (row_idx >= mctx->womRows.size()) {
+    throw std::runtime_error("extern_plonkWrite_wom: row_idx out of bounds");
+  }
+  WomArgumentRow& row = mctx->womRows[row_idx];
   row.addr = addr;
   row.value = value;
 }
@@ -113,7 +131,13 @@ void extern_plonkWrite_wom(void* ctx, size_t cycle, const char* extra, std::arra
 std::array<Fp, 5>
 extern_plonkRead_wom(void* ctx, size_t cycle, const char* extra, std::array<Fp, 0> args) {
   MachineContext* mctx = static_cast<MachineContext*>(ctx);
+  if (cycle >= mctx->womIndex.size()) {
+    throw std::runtime_error("extern_plonkRead_wom: cycle out of bounds");
+  }
   uint32_t idx = mctx->womIndex[cycle]++;
+  if (idx >= mctx->womRows.size()) {
+    throw std::runtime_error("extern_plonkRead_wom: idx >= womRows.size()");
+  }
   const WomArgumentRow& row = mctx->womRows[idx];
 
   // printf("extern_plonkRead_wom(%lu): %u, %u [0x%08x, 0x%08x, 0x%08x, 0x%08x])\n",
